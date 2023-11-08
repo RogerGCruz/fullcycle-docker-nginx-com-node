@@ -1,22 +1,57 @@
-var createError     = require('http-errors');
-var express         = require('express');
-var path            = require('path');
+const express = require('express')
+const app = express()
+const connection = require('./database');
 
-var indexRouter = require('./routes/index');
-var app = express();
+const port = 3000
 
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
+function initDb(connection) {
+  createTables(connection);
+}
 
-app.use('/', indexRouter);
-app.use(function(req, res, next) {
-  next(createError(404));
-});
-app.use(function(err, req, res, next) {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-  res.status(err.status || 500);
-  res.render('error');
-});
+function createTables(connection) {
+  let sql =   `CREATE TABLE IF NOT EXISTS people( `+
+                ` id int primary key auto_increment, `+
+                ` name varchar(255) not null `+
+              `)`;
 
-module.exports = app;
+  connection.query(sql, function (err, result, fields) {
+    if (err) throw err;
+  });
+}
+
+function insertPeople(connection) {
+  const name = 'FullCycle User at ' + new Date().toISOString();
+  const sql = `INSERT INTO people(name) VALUES('${name}')`;
+  connection.query(sql, function (err, result, fields) {
+    if (err) throw err;
+  });
+}
+
+const select = selectPeople(connection)
+
+function selectPeople(connection) {
+  return new Promise((resolve, reject) => {
+    const query = `SELECT * FROM people`;
+    connection.query(query, (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(result);
+    });
+  });
+}
+
+const listPeople = async () => {
+  const allPeople = (await select)
+  console.log(allPeople)
+  return allPeople
+}
+
+app.get('/', async (req, res) => {
+  initDb(connection)
+  insertPeople(connection)
+  const people = await listPeople();
+  const listPeopleItems = people.map(item => `<li align="center">${item.name}</li>`).join('');
+  const html = `<h1 align="center">Full Cycle Rocks!</h1>\n<ul>${listPeopleItems}</ul>`;
+  res.send(html)
+})
