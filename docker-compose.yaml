@@ -20,7 +20,7 @@ services:
     container_name: app
     hostname: app
     entrypoint: dockerize -wait tcp://db:3306 -timeout 50s docker-entrypoint.sh
-    command: npm start
+    command: npm install -g express-generator && npx express --view=ejs && npm install && npm start
     build:
       context: ./node
     networks:
