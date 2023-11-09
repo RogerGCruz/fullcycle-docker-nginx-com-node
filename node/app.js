@@ -1,24 +1,50 @@
-const express = require('express')
-const app = express()
-const connection = require('./database');
+const express     = require('express')
+const app         = express()
+const connection  = require('./database');
+const port        = 3000
+const table       = initDB(connection)
+const insert      = insertPeople(connection)
+const select      = selectPeople(connection)
 
-const port = 3000
-
-function initDb(connection) {
-  createTables(connection);
+/**
+ * Retrieves a list of people.
+ *
+ * @return {Array} The list of people.
+ */
+const listPeople = async () => {
+  const allPeople = (await select)
+  return allPeople
 }
 
-function createTables(connection) {
-  let sql =   `CREATE TABLE IF NOT EXISTS people( `+
-                ` id int primary key auto_increment, `+
-                ` name varchar(255) not null `+
-              `)`;
-
-  connection.query(sql, function (err, result, fields) {
-    if (err) throw err;
-  });
+/**
+ * Initializes the database by creating a table named 'people' if it doesn't exist.
+ *
+ * @param {Object} connection - The connection object to the database.
+ * @return {Promise} A promise that resolves with the result of the query if successful, or rejects with an error if there was an error executing the query.
+ */
+function initDB(connection) {
+  return new Promise((resolve, reject) => {
+    const sql = `create table if not exists people (
+      id int not null auto_increment,
+      name varchar(255) not null,
+      primary key (id)
+    )`
+    connection.query(sql, (err, result) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(result)
+      }
+    })
+  })
 }
 
+/**
+ * Insert a new person into the database.
+ *
+ * @param {Object} connection - The connection object for the database.
+ * @return {void} This function does not return any value.
+ */
 function insertPeople(connection) {
   const name = 'FullCycle User at ' + new Date().toISOString();
   const sql = `INSERT INTO people(name) VALUES('${name}')`;
@@ -27,31 +53,33 @@ function insertPeople(connection) {
   });
 }
 
-const select = selectPeople(connection)
-
+/**
+ * Retrieves all the people from the database.
+ *
+ * @param {Object} connection - The database connection object.
+ * @return {Promise} A promise that resolves to an array of people objects.
+ */
 function selectPeople(connection) {
   return new Promise((resolve, reject) => {
-    const query = `SELECT * FROM people`;
-    connection.query(query, (err, result) => {
+    const sql = `select * from people`
+    connection.query(sql, (err, result) => {
       if (err) {
-        reject(err);
+        reject(err)
+      } else {
+        resolve(result)
       }
-      resolve(result);
-    });
-  });
+    })
+  })
 }
 
-const listPeople = async () => {
-  const allPeople = (await select)
-  console.log(allPeople)
-  return allPeople
-}
-
+// Route default
 app.get('/', async (req, res) => {
-  initDb(connection)
-  insertPeople(connection)
-  const people = await listPeople();
-  const listPeopleItems = people.map(item => `<li align="center">${item.name}</li>`).join('');
-  const html = `<h1 align="center">Full Cycle Rocks!</h1>\n<ul>${listPeopleItems}</ul>`;
-  res.send(html)
+  const peoples = await listPeople()
+  const listPeoples = '<ul>' + peoples.map(item => `<li>${item.name}</li>`).join('') + '</ul>'
+  res.send(`<h1>Full Cycle Rocks!</h1>\n${listPeoples}`)
+})
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server start: ${port}`)
 })
